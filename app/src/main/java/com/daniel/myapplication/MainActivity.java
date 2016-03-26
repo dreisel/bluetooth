@@ -2,10 +2,6 @@ package com.daniel.myapplication;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.annotation.TargetApi;
-import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -13,9 +9,7 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
@@ -23,44 +17,25 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothProfile;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanSettings;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 
-import android.graphics.Color;
-
-import android.os.Build;
-import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 
+import com.daniel.DBHelper;
+import com.daniel.MyTestService;
 import com.daniel.ScanResultHandler;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 public class MainActivity extends Activity {
@@ -81,6 +56,17 @@ public class MainActivity extends Activity {
     Set<String> mySet= new HashSet<>();
     ScanResultHandler mScanCallback = new ScanResultHandler();
 
+    DBHelper mydb;
+
+    public void launchTestService() {
+        // Construct our Intent specifying the Service
+        Intent i = new Intent(this, MyTestService.class);
+        // Add extras to the bundle
+        i.putExtra("foo", "bar");
+        // Start the service
+        startService(i);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,6 +82,7 @@ public class MainActivity extends Activity {
         madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, list);
         mHandler = new Handler();
         lv.setAdapter(madapter);
+        mydb = DBHelper.getInstance(this);
 
 
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
@@ -106,19 +93,15 @@ public class MainActivity extends Activity {
         final BluetoothManager bluetoothManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
-
+        Intent i = new Intent(getApplicationContext(), DeviceListActivity.class);
+        startActivity(i);
     }
 
     public void on(View v) {
-       /* if (!BA.isEnabled()) {
-            Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(turnOn, 0);
-            Intent intent = new Intent(this, PowerMeterService.class);
-            startService(intent);
-            Toast.makeText(getApplicationContext(), "Turned on", Toast.LENGTH_LONG).show();
-        } else {
-            Toast.makeText(getApplicationContext(), "Already on", Toast.LENGTH_LONG).show();
-        }*/
+        launchTestService();
+        list.clear();
+        //list.addAll(mydb.getAllIds());
+        madapter.notifyDataSetChanged();
     }
 
     public void off(View v) {
@@ -130,17 +113,19 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= 21) {
                 mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
                 settings = new ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                        .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
                         .build();
                 filters = new ArrayList<ScanFilter>();
+               // filters.add(new ScanFilter.Builder().setDeviceName("nut").build());
             }
             scanLeDevice(true);
         }
     }
 
     public void visible(View v) {
-        Intent getVisible = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        startActivityForResult(getVisible, 0);
+        Intent i = new Intent(getApplicationContext(), DeviceListActivity.class);
+        startActivity(i);
+        //mydb.insertDevice("id" + Math.random(), "nut", "piccccc");
     }
 
     public void list(View v) {
@@ -197,8 +182,10 @@ public class MainActivity extends Activity {
         list.clear();
         List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices());
         for(BluetoothDevice btd : lst) {
+            btd.connectGatt(this,true,gattCallback);
             list.add(btd.getName() + " : " + btd.getAddress());
         }
+
         madapter.notifyDataSetChanged();
     }
 
