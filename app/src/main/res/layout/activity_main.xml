@@ -20,27 +20,18 @@
         android:text="Tutorials point"
         android:id="@+id/textView"
         android:layout_below="@+id/textview"
-        android:layout_centerHorizontal="true"
-        android:textColor="#ff7aff24"
-        android:textSize="35dp" />
-
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/imageView"
-        android:src="@drawable/abc"
-        android:layout_below="@+id/textView"
-        android:layout_centerHorizontal="true"
-        android:theme="@style/Base.TextAppearance.AppCompat" />
+        android:textColor="#000000"
+        android:textSize="35dp"
+        android:layout_alignEnd="@+id/textview"
+        android:layout_above="@+id/button3" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Turn On"
         android:id="@+id/button"
-        android:layout_below="@+id/imageView"
-        android:layout_toStartOf="@+id/imageView"
-        android:layout_toLeftOf="@+id/imageView"
+        android:layout_below="@+id/textview"
+        android:layout_toStartOf="@+id/textView"
         android:clickable="true"
         android:onClick="on" />
 
@@ -50,8 +41,9 @@
         android:text="Get visible"
         android:onClick="visible"
         android:id="@+id/button2"
-        android:layout_alignBottom="@+id/button"
-        android:layout_centerHorizontal="true" />
+        android:layout_above="@+id/textView2"
+        android:layout_toEndOf="@+id/button4"
+        android:layout_alignTop="@+id/textView2" />
 
     <Button
         android:layout_width="wrap_content"
@@ -59,9 +51,8 @@
         android:text="List devices"
         android:onClick="list"
         android:id="@+id/button3"
-        android:layout_below="@+id/imageView"
-        android:layout_toRightOf="@+id/imageView"
-        android:layout_toEndOf="@+id/imageView" />
+        android:layout_above="@+id/textView2"
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:layout_width="wrap_content"

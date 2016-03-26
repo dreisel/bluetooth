@@ -11,16 +11,20 @@ import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -36,6 +40,7 @@ import com.daniel.DBHelper;
 import com.daniel.MyTestService;
 import com.daniel.ScanResultHandler;
 
+import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends Activity {
@@ -46,7 +51,7 @@ public class MainActivity extends Activity {
     private BluetoothAdapter mBluetoothAdapter;
     private int REQUEST_ENABLE_BT = 1;
     private Handler mHandler;
-    private static final long SCAN_PERIOD = 10000;
+    private static final long SCAN_PERIOD = 20000;
     private BluetoothLeScanner mLEScanner;
     private ScanSettings settings;
     private List<ScanFilter> filters;
@@ -71,7 +76,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        registerReceiver(receiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
         b1 = (Button) findViewById(R.id.button);
         b2 = (Button) findViewById(R.id.button2);
         b3 = (Button) findViewById(R.id.button3);
@@ -82,9 +87,7 @@ public class MainActivity extends Activity {
         madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, list);
         mHandler = new Handler();
         lv.setAdapter(madapter);
-        mydb = DBHelper.getInstance(this);
-
-
+        mydb = new DBHelper(this);
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, "BLE Not Supported",
                     Toast.LENGTH_SHORT).show();
@@ -93,16 +96,25 @@ public class MainActivity extends Activity {
         final BluetoothManager bluetoothManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
-        Intent i = new Intent(getApplicationContext(), DeviceListActivity.class);
-        startActivity(i);
     }
 
     public void on(View v) {
-        launchTestService();
-        list.clear();
-        //list.addAll(mydb.getAllIds());
-        madapter.notifyDataSetChanged();
+        mBluetoothAdapter.startDiscovery();
+
     }
+    private final BroadcastReceiver receiver = new BroadcastReceiver(){
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            String action = intent.getAction();
+            if(BluetoothDevice.ACTION_FOUND.equals(action)) {
+                int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI,Short.MIN_VALUE);
+                String name = intent.getStringExtra(BluetoothDevice.EXTRA_NAME);
+                TextView rssi_msg = (TextView) findViewById(R.id.textview);
+                rssi_msg.setText(rssi_msg.getText() + name + " => " + rssi + "dBm\n");
+            }
+        }
+    };
 
     public void off(View v) {
         list.clear();
@@ -113,7 +125,7 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= 21) {
                 mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
                 settings = new ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                         .build();
                 filters = new ArrayList<ScanFilter>();
                // filters.add(new ScanFilter.Builder().setDeviceName("nut").build());
@@ -180,12 +192,20 @@ public class MainActivity extends Activity {
 
     private void populateLst() {
         list.clear();
-        List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices());
+        Set<String> currentMACSet = new HashSet<>();
+        Set<String> activeMACSet = new HashSet<>();
+        currentMACSet.addAll(Arrays.asList(DBHelper.macAddress));
+        Map<BluetoothDevice,Integer> deviceMap = mScanCallback.getDevices();
+        List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices().keySet());
         for(BluetoothDevice btd : lst) {
-            btd.connectGatt(this,true,gattCallback);
-            list.add(btd.getName() + " : " + btd.getAddress());
-        }
+            btd.connectGatt(this, true, gattCallback);
+            activeMACSet.add(btd.getAddress());
 
+        }
+        currentMACSet.removeAll(activeMACSet);
+        if(currentMACSet.size() > 1){
+            Toast.makeText(getApplicationContext(),"heyyy!!!!!",Toast.LENGTH_LONG).show();
+        }
         madapter.notifyDataSetChanged();
     }
 

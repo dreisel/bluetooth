@@ -11,34 +11,33 @@ import android.widget.Toast;
 
 import com.daniel.myapplication.R;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Created by daniel on 21/03/16.
  */
 public class ScanResultHandler  extends ScanCallback {
-    Set<BluetoothDevice> devices;
+    Map<BluetoothDevice,Integer> devices;
+
 
     public ScanResultHandler() {
-        devices = new HashSet<>();
-    }
-
-    public ScanResultHandler(Set<BluetoothDevice> devices) {
-        this.devices = devices;
+        devices = new HashMap<>();
     }
 
     public void clear(){
         devices.clear();
     }
-    public Set<BluetoothDevice> getDevices(){
+    public Map<BluetoothDevice,Integer> getDevices(){
         return devices;
     }
 
     @Override
     public void onScanResult(int callbackType, ScanResult result) {
-        devices.add(result.getDevice());
+        devices.put(result.getDevice(), result.getRssi());
         Log.i("callbackType", String.valueOf(callbackType));
         Log.i("result", result.toString());
         //madapter.notifyDataSetChanged();
@@ -49,8 +48,7 @@ public class ScanResultHandler  extends ScanCallback {
     @Override
     public void onBatchScanResults(List<ScanResult> results) {
         for (ScanResult sr : results) {
-            devices.add(sr.getDevice());
-            Log.i("ScanResult - Results", sr.toString());
+            devices.put(sr.getDevice(), sr.getRssi());
         }
     }
 
