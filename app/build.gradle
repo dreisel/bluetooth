@@ -27,4 +27,6 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:22.2.0'
+    compile 'uk.co.alt236:bluetooth-le-library-android:1.0.0'
+
 }

@@ -37,18 +37,13 @@ public class ScanResultHandler  extends ScanCallback {
 
     @Override
     public void onScanResult(int callbackType, ScanResult result) {
-        devices.put(result.getDevice(), result.getRssi());
-        Log.i("callbackType", String.valueOf(callbackType));
-        Log.i("result", result.toString());
-        //madapter.notifyDataSetChanged();
-        //BluetoothDevice btDevice = result.getDevice();
-        //connectToDevice(btDevice);
+        devices.put(result.getDevice(), result.getScanRecord().getTxPowerLevel());
     }
 
     @Override
     public void onBatchScanResults(List<ScanResult> results) {
-        for (ScanResult sr : results) {
-            devices.put(sr.getDevice(), sr.getRssi());
+        for (ScanResult result : results) {
+            devices.put(result.getDevice(), result.getScanRecord().getTxPowerLevel());
         }
     }
 
@@ -56,5 +51,7 @@ public class ScanResultHandler  extends ScanCallback {
     public void onScanFailed(int errorCode) {
         Log.e("Scan Failed", "Error Code: " + errorCode);
     }
+
+
 
 }
