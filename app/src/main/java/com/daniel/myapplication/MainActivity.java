@@ -125,7 +125,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    public void off(View v) {
+    public void scan(View v) {
         list.clear();
         mScanCallback.clear();
         Toast.makeText(this,"Scanning for "+SCAN_PERIOD+" seconds",Toast.LENGTH_LONG).show();
@@ -135,7 +135,6 @@ public class MainActivity extends Activity {
     public void visible(View v) {
         Intent i = new Intent(getApplicationContext(), DeviceListActivity.class);
         startActivity(i);
-        //mydb.insertDevice("id" + Math.random(), "nut", "piccccc");
     }
 
     public void list(View v) {
