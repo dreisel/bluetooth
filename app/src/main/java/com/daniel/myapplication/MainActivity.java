@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
     public void off(View v) {
         list.clear();
         mScanCallback.clear();
+        Toast.makeText(this,"Scanning for "+SCAN_PERIOD+" seconds",Toast.LENGTH_LONG).show();
         scanLeDevice(true);
     }
 
@@ -196,14 +197,18 @@ public class MainActivity extends Activity {
         currentMACSet.addAll(Arrays.asList(DBHelper.macAddress));
         Map<BluetoothDevice,Integer> deviceMap = mScanCallback.getDevices();
         List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices().keySet());
+        //adding items found to the active set
         for(BluetoothDevice btd : lst) {
+            list.add(btd.getName() + " : " + btd.getAddress());
             btd.connectGatt(this, true, gattCallback);
             activeMACSet.add(btd.getAddress());
 
         }
+        //removing all items found from the expected set
         currentMACSet.removeAll(activeMACSet);
+        //if set is not empty )
         if(currentMACSet.size() > 1){
-            Toast.makeText(getApplicationContext(),"heyyy!!!!!",Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(),"missing something",Toast.LENGTH_LONG).show();
         }
         madapter.notifyDataSetChanged();
     }
