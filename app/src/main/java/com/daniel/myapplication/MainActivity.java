@@ -25,6 +25,7 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -46,9 +47,7 @@ import java.util.Set;
 import uk.co.alt236.bluetoothlelib.device.BluetoothLeDevice;
 
 public class MainActivity extends Activity {
-    Button b1, b2, b3, b4;
-    private BluetoothAdapter BA;
-    private Set<BluetoothDevice> pairedDevices;
+    Button b1, b2, b4;
     ListView lv;
     private BluetoothAdapter mBluetoothAdapter;
     private int REQUEST_ENABLE_BT = 1;
@@ -78,14 +77,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        registerReceiver(receiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
-        b1 = (Button) findViewById(R.id.button);
-        b2 = (Button) findViewById(R.id.button2);
-        b3 = (Button) findViewById(R.id.button3);
-        b4 = (Button) findViewById(R.id.button4);
-
-        BA = BluetoothAdapter.getDefaultAdapter();
-        lv = (ListView) findViewById(R.id.listView);
+        lv = (ListView) findViewById(R.id.deviceList);
         madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, list);
         mHandler = new Handler();
         lv.setAdapter(madapter);
@@ -97,6 +89,7 @@ public class MainActivity extends Activity {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
+
         if (Build.VERSION.SDK_INT >= 21) {
             mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
             settings = new ScanSettings.Builder()
@@ -107,47 +100,26 @@ public class MainActivity extends Activity {
         }
     }
 
-    public void on(View v) {
-        mBluetoothAdapter.startDiscovery();
-
-    }
-    private final BroadcastReceiver receiver = new BroadcastReceiver(){
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            String action = intent.getAction();
-            if(BluetoothDevice.ACTION_FOUND.equals(action)) {
-                int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI,Short.MIN_VALUE);
-                String name = intent.getStringExtra(BluetoothDevice.EXTRA_NAME);
-                TextView rssi_msg = (TextView) findViewById(R.id.textview);
-                rssi_msg.setText(rssi_msg.getText() + name + " => " + rssi + "dBm\n");
-            }
-        }
-    };
+    /**
+     * Start device discover with the BluetoothAdapter
+     */
 
     public void scan(View v) {
         list.clear();
         mScanCallback.clear();
-        Toast.makeText(this,"Scanning for "+SCAN_PERIOD+" seconds",Toast.LENGTH_LONG).show();
+        mScanCallback.setContext(this);
+        mScanCallback.setExpectedResults(new HashSet<String>(Arrays.asList(DBHelper.macAddress)));
+
+
+        Toast.makeText(this,"Scanning for "+SCAN_PERIOD / 1000 +" seconds",Toast.LENGTH_LONG).show();
         scanLeDevice(true);
     }
 
-    public void visible(View v) {
+    public void edit(View v) {
         Intent i = new Intent(getApplicationContext(), DeviceListActivity.class);
         startActivity(i);
     }
 
-    public void list(View v) {
-        pairedDevices = BA.getBondedDevices();
-        ArrayList list = new ArrayList();
-
-        for (BluetoothDevice bt : pairedDevices)
-            list.add(bt.getName());
-        Toast.makeText(getApplicationContext(), "Showing Paired Devices", Toast.LENGTH_SHORT).show();
-
-        final ArrayAdapter adapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, list);
-        lv.setAdapter(adapter);
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -161,9 +133,7 @@ public class MainActivity extends Activity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-
         int id = item.getItemId();
-
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
@@ -185,11 +155,9 @@ public class MainActivity extends Activity {
         } else {
             mLEScanner.stopScan(mScanCallback);
         }
-
     }
 
     private void populateLst() {
-
         list.clear();
         Set<String> currentMACSet = new HashSet<>();
         Set<String> activeMACSet = new HashSet<>();
@@ -199,7 +167,6 @@ public class MainActivity extends Activity {
         //adding items found to the active set
         for(BluetoothDevice btd : lst) {
             list.add(btd.getName() + " : " + btd.getAddress());
-            btd.connectGatt(this, true, gattCallback);
             activeMACSet.add(btd.getAddress());
 
         }
@@ -211,46 +178,4 @@ public class MainActivity extends Activity {
         }
         madapter.notifyDataSetChanged();
     }
-
-    public void connectToDevice(BluetoothDevice device) {
-        if (mGatt == null) {
-            mGatt = device.connectGatt(this, false, gattCallback);
-            scanLeDevice(false);// will stop after first device detection
-        }
-    }
-
-    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
-        @Override
-        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            Log.i("onConnectionStateChange", "Status: " + status);
-            switch (newState) {
-                case BluetoothProfile.STATE_CONNECTED:
-                    Log.i("gattCallback", "STATE_CONNECTED");
-                    gatt.discoverServices();
-                    break;
-                case BluetoothProfile.STATE_DISCONNECTED:
-                    Log.e("gattCallback", "STATE_DISCONNECTED");
-                    break;
-                default:
-                    Log.e("gattCallback", "STATE_OTHER");
-            }
-
-        }
-
-        @Override
-        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            List<BluetoothGattService> services = gatt.getServices();
-            Log.i("onServicesDiscovered", services.toString());
-            gatt.readCharacteristic(services.get(1).getCharacteristics().get
-                    (0));
-        }
-
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt,
-                                         BluetoothGattCharacteristic
-                                                 characteristic, int status) {
-            Log.i("onCharacteristicRead", characteristic.toString());
-            gatt.disconnect();
-        }
-    };
 }

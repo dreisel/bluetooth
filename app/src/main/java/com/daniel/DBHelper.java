@@ -18,7 +18,7 @@ public class DBHelper extends SQLiteOpenHelper {
 
     public static final String DATABASE_NAME = "forBagIt.db";
     public static final String ITEM_TABLE_NAME = "trackers";
-    public static String[] macAddress = {"null","E9:AD:EC:47:8F:A3","DA:B4:89:69:7F:72"};
+    public static String[] macAddress = {"E9:AD:EC:47:8F:A3","DA:B4:89:69:7F:72"};
     public DBHelper(Context context)
     {
         super(context, DATABASE_NAME, null, 1);
@@ -34,7 +34,7 @@ public class DBHelper extends SQLiteOpenHelper {
                         "wednesday integer, thursday integer, friday integer, saturday integer)"
         );
 
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 0; i < 5; i++) {
             db.execSQL(
                     "INSERT INTO " + ITEM_TABLE_NAME + " (id,name,pic,MAC,sunday,monday,tuesday,wednesday,thursday,friday,saturday)\n" +
                             " VALUES (" + i + ",'device0"+i+"','pic','mac"+i+"',0,0,0,0,0,0,0)"
@@ -89,14 +89,44 @@ public class DBHelper extends SQLiteOpenHelper {
         contentValues.put("thursday", deviceEntity.thursday);
         contentValues.put("friday", deviceEntity.friday);
         contentValues.put("saturday",deviceEntity.saturday);
-        db.update(ITEM_TABLE_NAME, contentValues, "id = "+deviceEntity.id,null);
+        db.update(ITEM_TABLE_NAME, contentValues, "id = " + deviceEntity.id,null);
         return true;
     }
+    public ArrayList<DeviceEntity> getDevicesPerDay(int day){
+        return getAll("select * from "+ ITEM_TABLE_NAME + " where " + dayNumToString(day) + " > 0");
+    }
 
-    public ArrayList<DeviceEntity> getAll(){
+    private String dayNumToString(int day){
+        String dayStr;
+        switch (day){
+            case 1:
+                dayStr = "sunday";
+                break;
+            case 2:
+                dayStr = "monday";
+                break;
+            case 3:
+                dayStr = "tuesday";
+                break;
+            case 4:
+                dayStr = "wednesday";
+                break;
+            case 5:
+                dayStr = "thursday";
+                break;
+            case 6:
+                dayStr = "friday";
+                break;
+            default:
+                dayStr = "saturday";
+                break;
+        }
+        return dayStr;
+    }
+    public ArrayList<DeviceEntity> getAll(String query){
         ArrayList<DeviceEntity> array_list = new ArrayList<DeviceEntity>();
         SQLiteDatabase db = getReadableDatabase();
-        Cursor res =  db.rawQuery("select * from " + ITEM_TABLE_NAME, null);
+        Cursor res =  db.rawQuery(query, null);
         res.moveToFirst();
         while(res.isAfterLast() == false){
             DeviceEntity deviceEntity = new DeviceEntity();

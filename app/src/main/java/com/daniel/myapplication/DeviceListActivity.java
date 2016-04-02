@@ -66,7 +66,7 @@ public class DeviceListActivity extends ListActivity {
     }
     private void refreshList(){
         devices.clear();
-        devices.addAll(dbHelper.getAll());
+        devices.addAll(dbHelper.getAll("select * from " + DBHelper.ITEM_TABLE_NAME));
         deviceViewAdapter.notifyDataSetChanged();
     }
 
