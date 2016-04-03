@@ -20,6 +20,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,12 +48,11 @@ import java.util.Set;
 import uk.co.alt236.bluetoothlelib.device.BluetoothLeDevice;
 
 public class MainActivity extends Activity {
-    Button b1, b2, b4;
     ListView lv;
     private BluetoothAdapter mBluetoothAdapter;
     private int REQUEST_ENABLE_BT = 1;
     private Handler mHandler;
-    private static final long SCAN_PERIOD = 20000;
+    private static final long SCAN_PERIOD = 15000;
     private BluetoothLeScanner mLEScanner;
     private ScanSettings settings;
     private List<ScanFilter> filters;
@@ -61,6 +61,7 @@ public class MainActivity extends Activity {
     ArrayAdapter madapter;
     Set<String> mySet= new HashSet<>();
     ScanResultHandler mScanCallback = new ScanResultHandler();
+    private ProgressBar spinner;
 
     DBHelper mydb;
 
@@ -76,7 +77,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+        spinner = (ProgressBar)findViewById(R.id.progressBar1);
+        spinner.setVisibility(View.GONE);
         lv = (ListView) findViewById(R.id.deviceList);
         madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, list);
         mHandler = new Handler();
@@ -109,9 +113,8 @@ public class MainActivity extends Activity {
         mScanCallback.clear();
         mScanCallback.setContext(this);
         mScanCallback.setExpectedResults(new HashSet<String>(Arrays.asList(DBHelper.macAddress)));
-
-
         Toast.makeText(this,"Scanning for "+SCAN_PERIOD / 1000 +" seconds",Toast.LENGTH_LONG).show();
+        spinner.setVisibility(View.VISIBLE);
         scanLeDevice(true);
     }
 
@@ -148,6 +151,7 @@ public class MainActivity extends Activity {
                 public void run() {
                     mLEScanner.stopScan(mScanCallback);
                     mLEScanner.flushPendingScanResults(mScanCallback);
+                    spinner.setVisibility(View.GONE);
                     populateLst();
                 }
             }, SCAN_PERIOD);
@@ -165,16 +169,19 @@ public class MainActivity extends Activity {
         Map<BluetoothDevice,Integer> deviceMap = mScanCallback.getDevices();
         List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices().keySet());
         //adding items found to the active set
-        for(BluetoothDevice btd : lst) {
-            list.add(btd.getName() + " : " + btd.getAddress());
-            activeMACSet.add(btd.getAddress());
-
+        for(BluetoothDevice btd : deviceMap.keySet()) {
+            int rssi = deviceMap.get(btd);
+            if(currentMACSet.contains(btd.getAddress()) && rssi > -50) {
+                String name = mydb.getByMac((String)currentMACSet.toArray()[0]).name;
+                list.add(name + " : " + rssi);
+                currentMACSet.remove(btd.getAddress());
+            }
         }
-        //removing all items found from the expected set
-        currentMACSet.removeAll(activeMACSet);
+        currentMACSet.remove("test");
         //if set is not empty )
-        if(currentMACSet.size() > 1){
-            Toast.makeText(getApplicationContext(),"missing something",Toast.LENGTH_LONG).show();
+        if(!currentMACSet.isEmpty()){
+            String name =mydb.getByMac((String)currentMACSet.toArray()[0]).name;
+            Toast.makeText(getApplicationContext(),"missing: "+name,Toast.LENGTH_LONG).show();
         }
         madapter.notifyDataSetChanged();
     }

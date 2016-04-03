@@ -61,7 +61,7 @@
     <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:id="@+id/listLO"
         android:layout_below="@+id/btnLO">
         <TextView
@@ -72,6 +72,12 @@
             android:id="@+id/textView2"
             android:textColor="#ff34ff06"
             android:textSize="25dp"/>
+        <ProgressBar
+            android:id="@+id/progressBar1"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true" />
 
         <ListView
             android:layout_width="match_parent"

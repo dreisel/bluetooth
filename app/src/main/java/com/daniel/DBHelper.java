@@ -18,7 +18,7 @@ public class DBHelper extends SQLiteOpenHelper {
 
     public static final String DATABASE_NAME = "forBagIt.db";
     public static final String ITEM_TABLE_NAME = "trackers";
-    public static String[] macAddress = {"E9:AD:EC:47:8F:A3","DA:B4:89:69:7F:72"};
+    public static String[] macAddress = {"E9:AD:EC:47:8F:A3","DA:B4:89:69:7F:72","test","test","test"};
     public DBHelper(Context context)
     {
         super(context, DATABASE_NAME, null, 1);
@@ -37,7 +37,7 @@ public class DBHelper extends SQLiteOpenHelper {
         for (int i = 0; i < 5; i++) {
             db.execSQL(
                     "INSERT INTO " + ITEM_TABLE_NAME + " (id,name,pic,MAC,sunday,monday,tuesday,wednesday,thursday,friday,saturday)\n" +
-                            " VALUES (" + i + ",'device0"+i+"','pic','mac"+i+"',0,0,0,0,0,0,0)"
+                            " VALUES (" + i + ",'device0"+i+"','pic','" + macAddress[i] + "',0,0,0,0,0,0,0)"
             );
         }
     }
@@ -122,6 +122,9 @@ public class DBHelper extends SQLiteOpenHelper {
                 break;
         }
         return dayStr;
+    }
+    public DeviceEntity getByMac(String mac){
+        return getAll("select * from "+ ITEM_TABLE_NAME + " where MAC = '" +mac+ "'").get(0);
     }
     public ArrayList<DeviceEntity> getAll(String query){
         ArrayList<DeviceEntity> array_list = new ArrayList<DeviceEntity>();
