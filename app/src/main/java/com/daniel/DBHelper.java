@@ -6,7 +6,7 @@ package com.daniel;
 
 import android.database.Cursor;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -37,7 +37,7 @@ public class DBHelper extends SQLiteOpenHelper {
         for (int i = 0; i < 5; i++) {
             db.execSQL(
                     "INSERT INTO " + ITEM_TABLE_NAME + " (id,name,pic,MAC,sunday,monday,tuesday,wednesday,thursday,friday,saturday)\n" +
-                            " VALUES (" + i + ",'device0"+i+"','pic','" + macAddress[i] + "',0,0,0,0,0,0,0)"
+                            " VALUES (" + i + ",'device0"+i+"','pic','" + macAddress[i] + "',1,1,1,1,1,1,1)"
             );
         }
     }
@@ -92,8 +92,19 @@ public class DBHelper extends SQLiteOpenHelper {
         db.update(ITEM_TABLE_NAME, contentValues, "id = " + deviceEntity.id,null);
         return true;
     }
-    public ArrayList<DeviceEntity> getDevicesPerDay(int day){
-        return getAll("select * from "+ ITEM_TABLE_NAME + " where " + dayNumToString(day) + " > 0");
+    public ArrayList<String> getDevicesPerDay(int day){
+        String query = "select MAC from "+ ITEM_TABLE_NAME + " where " + dayNumToString(day) + " > 0";
+        ArrayList<String> array_list = new ArrayList<String>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor res =  db.rawQuery(query, null);
+        res.moveToFirst();
+        while(res.isAfterLast() == false){
+            String mac = res.getString(res.getColumnIndex("MAC"));
+            if(!mac.equalsIgnoreCase("test"))
+                array_list.add(mac);
+            res.moveToNext();
+        }
+        return array_list;
     }
 
     private String dayNumToString(int day){
@@ -123,7 +134,14 @@ public class DBHelper extends SQLiteOpenHelper {
         }
         return dayStr;
     }
-    public DeviceEntity getByMac(String mac){
+    public List<DeviceEntity> getDevicesByMac(List<String> macs){
+        List<DeviceEntity> devices = new ArrayList<>();
+        for(String mac : macs){
+            devices.add(getDeviceByMac(mac));
+        }
+        return devices;
+    }
+    public DeviceEntity getDeviceByMac(String mac){
         return getAll("select * from "+ ITEM_TABLE_NAME + " where MAC = '" +mac+ "'").get(0);
     }
     public ArrayList<DeviceEntity> getAll(String query){
@@ -149,4 +167,5 @@ public class DBHelper extends SQLiteOpenHelper {
         }
         return array_list;
     }
+
 }

@@ -1,6 +1,10 @@
 package com.daniel.myapplication;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -10,65 +14,63 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
 import com.daniel.DBHelper;
-import com.daniel.MyTestService;
-import com.daniel.ScanResultHandler;
-import java.util.Map;
-import java.util.Set;
-import uk.co.alt236.bluetoothlelib.device.BluetoothLeDevice;
 
 public class MainActivity extends Activity {
     ListView lv;
-    private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothAdapter btAdapter;
     private int REQUEST_ENABLE_BT = 1;
     private Handler mHandler;
-    private static final long SCAN_PERIOD = 3000;
-    private BluetoothLeScanner mLEScanner;
+    private static final long SCAN_PERIOD = 15000;
+    private BluetoothLeScanner scanner;
     private ScanSettings settings;
     private List<ScanFilter> filters;
     private BluetoothGatt mGatt;
-    ArrayList list = new ArrayList();
+    ArrayList<String> missingDevices = new ArrayList<>();
+    ArrayList<String> packedDevices = new ArrayList<>();
     ArrayAdapter madapter;
-    Set<String> mySet= new HashSet<>();
     ScanResultHandler mScanCallback = new ScanResultHandler();
     private ProgressBar spinner;
-
     DBHelper mydb;
-
-    public void launchTestService() {
-        // Construct our Intent specifying the Service
-        Intent i = new Intent(this, MyTestService.class);
-        // Add extras to the bundle
-        i.putExtra("foo", "bar");
-        // Start the service
-        startService(i);
+    boolean test = false;
+    public void listDevices(View view){
+        if(!isMyServiceRunning(TaskSchedulerService.class)) {
+            test = !test;
+            startService(new Intent(getBaseContext(), TaskSchedulerService.class));
+        } else
+            stopService(new Intent(getBaseContext(), TaskSchedulerService.class));
     }
-
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,25 +79,26 @@ public class MainActivity extends Activity {
         spinner = (ProgressBar)findViewById(R.id.progressBar1);
         spinner.setVisibility(View.GONE);
         lv = (ListView) findViewById(R.id.deviceList);
-        madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, list);
+        madapter = new ArrayAdapter(getBaseContext(), android.R.layout.simple_list_item_1, packedDevices);
         mHandler = new Handler();
         lv.setAdapter(madapter);
         mydb = new DBHelper(this);
         final BluetoothManager bluetoothManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = bluetoothManager.getAdapter();
-        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+        btAdapter = bluetoothManager.getAdapter();
+        if (btAdapter == null || !btAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
         if (Build.VERSION.SDK_INT >= 21) {
-            mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
+            scanner = btAdapter.getBluetoothLeScanner();
             settings = new ScanSettings.Builder()
                     .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                     .build();
             filters = new ArrayList<ScanFilter>();
             filters.add(new ScanFilter.Builder().setDeviceAddress("DA:B4:89:69:7F:72").build());
+            filters.add(new ScanFilter.Builder().setDeviceAddress("E9:AD:EC:47:8F:A3").build());
         }
     }
 
@@ -104,11 +107,11 @@ public class MainActivity extends Activity {
      */
 
     public void scan(View v) {
-        list.clear();
-        mScanCallback.clear();
-        mScanCallback.setContext(this);
-        mScanCallback.setExpectedResults(new HashSet<String>(Arrays.asList(DBHelper.macAddress)));
-        Toast.makeText(this,"Scanning for " + SCAN_PERIOD / 1000 + " seconds" ,Toast.LENGTH_LONG).show();
+        missingDevices.clear();
+        packedDevices.clear();
+        madapter.notifyDataSetChanged();
+        missingDevices.addAll(mydb.getDevicesPerDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK)));
+        Toast.makeText(this,Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + ", Scanning for " + SCAN_PERIOD / 1000 + " seconds" ,Toast.LENGTH_LONG).show();
         spinner.setVisibility(View.VISIBLE);
         scanLeDevice(true);
     }
@@ -144,45 +147,27 @@ public class MainActivity extends Activity {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    mLEScanner.stopScan(mScanCallback);
-                    mLEScanner.flushPendingScanResults(mScanCallback);
+                    scanner.flushPendingScanResults(mScanCallback);
+                    scanner.stopScan(mScanCallback);
                     spinner.setVisibility(View.GONE);
                     populateLst();
                 }
             }, SCAN_PERIOD);
-            mLEScanner.startScan(filters, (new android.bluetooth.le.ScanSettings.Builder()).setScanMode(2).build(), mScanCallback);
+            scanner.startScan(filters, (new android.bluetooth.le.ScanSettings.Builder()).setScanMode(2).build(), mScanCallback);
         } else {
-            mLEScanner.stopScan(mScanCallback);
+            scanner.stopScan(mScanCallback);
+            populateLst();
         }
     }
 
     private void populateLst() {
-        list.clear();
-        Set<String> currentMACSet = new HashSet<>(Arrays.asList(DBHelper.macAddress));
-        Set<String> activeMACSet = new HashSet<>();
-        currentMACSet.addAll(Arrays.asList(DBHelper.macAddress));
-        Map<BluetoothDevice,Integer> deviceMap = mScanCallback.getDevices();
-        List<BluetoothDevice> lst = new ArrayList(mScanCallback.getDevices().keySet());
+        packedDevices.clear();
+        ArrayList<String> devices = mydb.getDevicesPerDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK));
+        devices.removeAll(missingDevices);
         //adding items found to the active set
-        for(BluetoothDevice btd : deviceMap.keySet()) {
-            int RSSI = deviceMap.get(btd);
-            if(currentMACSet.contains(btd.getAddress()) && RSSI > -60) {
-               // connectToDevice(btd);
-                String name = mydb.getByMac(btd.getAddress()).name;
-                list.add(name + " : " + RSSI);
-                currentMACSet.remove(btd.getAddress());
-                btd.connectGatt(this,true,null);
-            }
-        }
-        currentMACSet.remove("test");
-        //if set is not empty )
-        if(currentMACSet.size() == 1){
-            String name = mydb.getByMac((String)currentMACSet.toArray()[0]).name;
-            Toast.makeText(getApplicationContext(),"missing: "+name,Toast.LENGTH_LONG).show();
-        } else if(currentMACSet.size() > 1){
-            Toast.makeText(getApplicationContext(),"missing some items",Toast.LENGTH_LONG).show();
-        }else {
-            Toast.makeText(getApplicationContext(),"good boy",Toast.LENGTH_LONG).show();
+        for(String mac : devices) {
+            String name = mydb.getDeviceByMac(mac).name;
+            packedDevices.add(name);
         }
         madapter.notifyDataSetChanged();
     }
@@ -223,4 +208,41 @@ public class MainActivity extends Activity {
             gatt.disconnect();
         }
     };
+
+    public class ScanResultHandler  extends ScanCallback {
+
+
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            if(0 - result.getRssi() < 100 ) {
+                Toast.makeText(getApplicationContext(), result.getDevice().getAddress(), Toast.LENGTH_SHORT).show();
+                missingDevices.remove(result.getDevice().getAddress());
+                if (missingDevices.isEmpty()) {
+                    Toast.makeText(getApplicationContext(), "good", Toast.LENGTH_LONG).show();
+                    scanLeDevice(false);
+                }
+            }
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            for (ScanResult result : results) {
+                if(0 - result.getRssi() < 100 ) {
+                    missingDevices.remove(result.getDevice().getAddress());
+                    if (missingDevices.isEmpty()) {
+                        Toast.makeText(getApplicationContext(), "good", Toast.LENGTH_LONG);
+                        scanLeDevice(false);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            Log.e("Scan Failed", "Error Code: " + errorCode);
+        }
+
+
+
+    }
 }
