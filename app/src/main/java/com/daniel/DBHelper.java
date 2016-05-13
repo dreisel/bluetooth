@@ -18,7 +18,13 @@ public class DBHelper extends SQLiteOpenHelper {
 
     public static final String DATABASE_NAME = "forBagIt.db";
     public static final String ITEM_TABLE_NAME = "trackers";
-    public static String[] macAddress = {"E9:AD:EC:47:8F:A3","DA:B4:89:69:7F:72","test","test","test"};
+    public static String[] macAddress =  {
+            "ED:BA:5D:0C:9E:EC" ,
+            "F3:D1:71:9A:6C:93",
+            "D6:09:89:66:D9:DB",
+            "DA:D1:37:8F:E0:FB",
+            "F6:A3:49:A7:AB:AB" };
+
     public DBHelper(Context context)
     {
         super(context, DATABASE_NAME, null, 1);
